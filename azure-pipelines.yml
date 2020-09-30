@@ -1,0 +1,51 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+variables:
+- name: Solution
+  value: TestsNotPublished.sln
+- name: TestResultsDir
+  value: $(Agent.TempDirectory)/TestResults
+- name: BuildConfiguration
+  value: Release
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- task: DotNetCoreCLI@2
+  displayName: Restore
+  inputs:
+    command: restore
+    projects: $(Solution)
+    verbosityRestore: Minimal
+
+- task: DotNetCoreCLI@2
+  displayName: Build
+  inputs:
+    command: build
+    projects: $(Solution)
+    arguments: --no-restore --configuration $(BuildConfiguration)
+
+- task: DotNetCoreCLI@2
+  continueOnError: true
+  displayName: Test
+  inputs:
+    command: test
+    projects: $(Solution)
+    publishTestResults: false
+    arguments: --no-restore --no-build --configuration $(BuildConfiguration) --logger trx --results-directory $(TestResultsDir)
+
+- task: PublishTestResults@2
+  displayName: Publish Test Results
+  inputs:
+    testResultsFormat: VSTest
+    testResultsFiles: $(TestResultsDir)/*.trx
+    mergeTestResults: true
+    testRunTitle: $(Build.DefinitionName)
+    buildConfiguration: $(BuildConfiguration)
